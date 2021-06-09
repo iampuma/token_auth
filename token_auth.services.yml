@@ -1,0 +1,6 @@
+services:
+  token_auth.auth_middleware:
+    class: Drupal\token_auth\AuthTokenMiddleware
+    arguments: ['@entity_type.manager', '@current_user']
+    tags:
+      - { name: http_middleware, priority: 100 }

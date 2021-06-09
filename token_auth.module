@@ -1,0 +1,25 @@
+<?php
+
+use Drupal\Core\Entity\EntityInterface;
+
+/**
+ * Implements hook_ENTITY_TYPE_presave().
+ */
+function token_auth_user_presave(EntityInterface $entity)
+{
+  if (!$entity->isNew()) {
+    return;
+  }
+
+  try {
+    $authToken = \Drupal::service('token_auth.auth_middleware')->generateAuthToken();
+    $entity->set('field_auth_token', $authToken);
+    \Drupal::messenger()->addMessage(t('The user was created with auth token @token.', ['@token' => $authToken]));
+  } catch (Exception $e) {
+    \Drupal::logger('token_auth')->critical(
+      t('Could not generate an account authorization token due to the following error: @message', [
+        '@message' => $e->getMessage()
+      ])
+    );
+  }
+}

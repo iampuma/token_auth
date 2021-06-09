@@ -1,0 +1,5 @@
+name: 'Token Authentication'
+type: module
+description: 'Authentication by user token'
+core_version_requirement: ^8.8 || ^9
+package: 'custom'

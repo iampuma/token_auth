@@ -1,0 +1,53 @@
+<?php
+
+use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
+use Drupal\Component\Plugin\Exception\PluginNotFoundException;
+use Drupal\Core\Entity\EntityStorageException;
+
+/**
+ * Implements HOOK_install().
+ */
+function token_auth_install()
+{
+  $batch = array(
+    'title' => t('Generating authentication tokens'),
+    'init_message' => t('Starting..'),
+    'error_message' => t('An error occurred during auth token generation.'),
+    'file' => drupal_get_path('module', 'token_auth') . '/token_auth.install',
+  );
+
+  $query = \Drupal::service('entity_type.manager')->getStorage('user')->getQuery();
+  $result = $query->execute();
+  foreach ($result as $uid) {
+    $batch['operations'][] = ['setAuthTokenByUid', [$uid]];
+  }
+
+  batch_set($batch);
+}
+
+/**
+ * @param int $uid
+ * @throws InvalidPluginDefinitionException
+ * @throws PluginNotFoundException
+ */
+function setAuthTokenByUid(int $uid): void
+{
+  $user = \Drupal::entityTypeManager()->getStorage('user')->load($uid);
+  if ($user !== null) {
+    $authToken = \Drupal::service('token_auth.auth_middleware')->generateAuthToken();
+    try {
+      $user->set('field_auth_token', $authToken);
+      $user->save();
+    } catch (EntityStorageException $e) {
+      \Drupal::logger('token_auth')->critical(
+        t('An error occurred while generating the auth token for uid @uid with message: @message', [
+          '@message' => $e->getMessage()
+        ])
+      );
+    }
+    \Drupal::messenger()->addMessage(t('The uid @uid was set with auth token @token.', [
+      '@uid' => $uid,
+      '@token' => $authToken
+    ]));
+  }
+}
